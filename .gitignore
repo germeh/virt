@@ -9,7 +9,7 @@ worktrees/
 *.exe
 *.zip
 
-# Existing local/generated workspace artifacts
+# Local datasets and generated artifacts already present in this workspace
 data/
 docx_edit/
 huawei_cli_assets/
