@@ -1,0 +1,28 @@
+# Local worktrees
+.worktrees
+.worktrees/
+worktrees
+worktrees/
+
+# Local installers and VM media
+*.iso
+*.exe
+*.zip
+
+# Existing local/generated workspace artifacts
+data/
+docx_edit/
+huawei_cli_assets/
+Huawei_CLI_Commands*.docx
+make_huawei_doc.py
+
+# Build outputs
+bin/
+dist/
+coverage.out
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
