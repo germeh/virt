@@ -35,4 +35,4 @@ virtctl health
 
 ## Current Limitation
 
-This is the appliance layer, not a finished remastered ISO. The next step is an ISO builder that copies these files into the Debian ISO and adds the right boot parameters for unattended installation.
+Use `scripts/build-virt-node-iso.sh` to build `dist/virt-node.iso`. The builder copies these files into the Debian ISO and adds BIOS/UEFI boot entries for unattended installation.
