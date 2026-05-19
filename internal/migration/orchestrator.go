@@ -47,6 +47,7 @@ func (o Orchestrator) Prepare(ctx context.Context, req Request) (*Task, error) {
 		task.Apply(EventFailed)
 		return task, err
 	}
+	task.SourceLocked = true
 	if err := task.Apply(EventPreflightPassed); err != nil {
 		return task, err
 	}

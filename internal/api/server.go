@@ -24,9 +24,14 @@ func (s *Server) handlePreflight(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":       true,
-		"failures": []any{},
+	writeJSON(w, http.StatusNotImplemented, map[string]any{
+		"ok": false,
+		"failures": []map[string]string{
+			{
+				"code":    "preflight_not_implemented",
+				"message": "preflight endpoint is not wired to the compatibility checker yet",
+			},
+		},
 	})
 }
 

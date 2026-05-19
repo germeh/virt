@@ -69,6 +69,31 @@ func TestOrchestratorKeepsSourceOwnerWhenFinalSyncFails(t *testing.T) {
 	}
 }
 
+func TestOrchestratorDoesNotMarkSourceLockedWhenLockFails(t *testing.T) {
+	lockErr := errors.New("lock failed")
+	source := &fakeSource{lockErr: lockErr}
+	orch := Orchestrator{Source: source, Target: &fakeTarget{}, Replicator: &fakeReplicator{}}
+
+	task, err := orch.Prepare(context.Background(), Request{
+		MigrationID: "mig-1",
+		VMID:        "vm-123",
+		SourceID:    "cluster-a",
+		TargetID:    "cluster-b",
+	})
+	if !errors.Is(err, lockErr) {
+		t.Fatalf("error = %v, want %v", err, lockErr)
+	}
+	if task == nil {
+		t.Fatal("expected failed task")
+	}
+	if task.SourceLocked {
+		t.Fatal("source lock flag should be false when LockVM fails")
+	}
+	if task.Phase != PhaseFailed {
+		t.Fatalf("phase = %s, want %s", task.Phase, PhaseFailed)
+	}
+}
+
 func TestOrchestratorPrepareRejectsInvalidRequest(t *testing.T) {
 	orch := Orchestrator{Source: &fakeSource{}, Target: &fakeTarget{}, Replicator: &fakeReplicator{}}
 
@@ -105,9 +130,13 @@ type fakeSource struct {
 	locked   bool
 	stopped  bool
 	archived bool
+	lockErr  error
 }
 
 func (f *fakeSource) LockVM(context.Context, string) error {
+	if f.lockErr != nil {
+		return f.lockErr
+	}
 	f.locked = true
 	return nil
 }

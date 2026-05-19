@@ -48,7 +48,6 @@ func NewTask(id, vmID, sourceClusterID, targetClusterID string) *Task {
 		TargetClusterID: targetClusterID,
 		OwnerClusterID:  sourceClusterID,
 		Phase:           PhaseCreated,
-		SourceLocked:    true,
 	}
 }
 

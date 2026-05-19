@@ -19,6 +19,7 @@ type dirtySnapshot struct {
 	ranges  []BlockRange
 	clear   func([]BlockRange)
 	discard func()
+	err     error
 }
 
 type dirtySnapshotter interface {
@@ -115,6 +116,9 @@ func (e Engine) syncDirtyRanges(ctx context.Context, source Disk, target Disk, c
 	defer unlock()
 
 	snapshot := dirtySnapshotForSync(source)
+	if snapshot.err != nil {
+		return SyncReport{}, snapshot.err
+	}
 	report, normalized, err := copyRangesAfterValidation(ctx, source, target, snapshot.ranges)
 	if err != nil {
 		if snapshot.discard != nil {
@@ -177,9 +181,7 @@ func dirtySnapshotForSync(source Disk) dirtySnapshot {
 		return snapshotter.snapshotDirtyRanges()
 	}
 	return dirtySnapshot{
-		ranges:  source.DirtyRanges(),
-		clear:   source.ClearDirtyRanges,
-		discard: func() {},
+		err: errors.New("source disk does not support safe dirty snapshots"),
 	}
 }
 

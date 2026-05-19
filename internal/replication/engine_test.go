@@ -88,6 +88,42 @@ func (d *dirtyRangeDisk) ClearDirtyRanges([]BlockRange) {
 	d.clearCalled = true
 }
 
+type snapshotDirtyRangeDisk struct {
+	base        *MemoryDisk
+	dirty       []BlockRange
+	clearCalled bool
+}
+
+func (d *snapshotDirtyRangeDisk) Size() uint64 {
+	return d.base.Size()
+}
+
+func (d *snapshotDirtyRangeDisk) ReadRange(r BlockRange) ([]byte, error) {
+	return d.base.ReadRange(r)
+}
+
+func (d *snapshotDirtyRangeDisk) WriteRange(r BlockRange, data []byte) error {
+	return d.base.WriteRange(r, data)
+}
+
+func (d *snapshotDirtyRangeDisk) DirtyRanges() []BlockRange {
+	return append([]BlockRange(nil), d.dirty...)
+}
+
+func (d *snapshotDirtyRangeDisk) ClearDirtyRanges([]BlockRange) {
+	d.clearCalled = true
+}
+
+func (d *snapshotDirtyRangeDisk) snapshotDirtyRanges() dirtySnapshot {
+	return dirtySnapshot{
+		ranges: append([]BlockRange(nil), d.dirty...),
+		clear: func([]BlockRange) {
+			d.clearCalled = true
+		},
+		discard: func() {},
+	}
+}
+
 func TestEngineBaseSyncCopiesFullDisk(t *testing.T) {
 	source := NewMemoryDisk([]byte("abcdefghij"))
 	target := NewMemoryDisk(make([]byte, 10))
@@ -400,7 +436,7 @@ func TestEngineSerializesDirtySyncForMemoryDisk(t *testing.T) {
 }
 
 func TestEngineIncrementalSyncRejectsOverflowingDirtyRange(t *testing.T) {
-	source := &dirtyRangeDisk{
+	source := &snapshotDirtyRangeDisk{
 		base:  NewMemoryDisk([]byte("abc")),
 		dirty: []BlockRange{{Offset: math.MaxUint64, Length: 1}},
 	}
@@ -416,6 +452,26 @@ func TestEngineIncrementalSyncRejectsOverflowingDirtyRange(t *testing.T) {
 	}
 	if source.clearCalled {
 		t.Fatalf("ClearDirtyRanges was called for overflowing dirty range")
+	}
+}
+
+func TestEngineIncrementalSyncRejectsUnsafeDirtyRangeSource(t *testing.T) {
+	source := &dirtyRangeDisk{
+		base:  NewMemoryDisk([]byte("abc")),
+		dirty: []BlockRange{{Offset: 0, Length: 1}},
+	}
+	target := NewMemoryDisk([]byte("abc"))
+	engine := Engine{ChunkSize: 4}
+
+	_, err := engine.IncrementalSync(context.Background(), source, target)
+	if err == nil {
+		t.Fatalf("IncrementalSync returned nil error for source without safe dirty snapshots")
+	}
+	if !strings.Contains(err.Error(), "safe dirty snapshots") {
+		t.Fatalf("error = %v, want safe dirty snapshot error", err)
+	}
+	if source.clearCalled {
+		t.Fatalf("ClearDirtyRanges was called for unsafe dirty range source")
 	}
 }
 

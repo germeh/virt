@@ -14,10 +14,13 @@ func TestServerPreflightEndpoint(t *testing.T) {
 
 	server.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusOK {
+	if rec.Code != http.StatusNotImplemented {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(rec.Body.String(), `"ok":true`) {
+	if !strings.Contains(rec.Body.String(), `"ok":false`) {
+		t.Fatalf("response body = %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"preflight_not_implemented"`) {
 		t.Fatalf("response body = %s", rec.Body.String())
 	}
 }
