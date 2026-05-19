@@ -1,10 +1,13 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"warm-migration-core/internal/host"
 )
 
 func TestServerPreflightEndpoint(t *testing.T) {
@@ -43,6 +46,63 @@ func TestServerHealthEndpoint(t *testing.T) {
 	}
 }
 
+func TestServerHostCapabilitiesEndpoint(t *testing.T) {
+	server := NewServer(WithHostService(fakeHostService{
+		caps: host.Capabilities{
+			Ready:         true,
+			KVMDevice:     true,
+			QEMU:          true,
+			Libvirt:       true,
+			VirtInstall:   true,
+			OVMF:          true,
+			LibvirtActive: true,
+		},
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/host/capabilities", nil)
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"ready":true`) {
+		t.Fatalf("response body = %s", rec.Body.String())
+	}
+}
+
+func TestServerHostVMsEndpoint(t *testing.T) {
+	server := NewServer(WithHostService(fakeHostService{
+		vms: []host.VM{{ID: "1", Name: "web-01", State: "running"}},
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/host/vms", nil)
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"name":"web-01"`) {
+		t.Fatalf("response body = %s", rec.Body.String())
+	}
+}
+
+func TestServerHostEndpointsRequireConfiguredHostService(t *testing.T) {
+	server := NewServer()
+	req := httptest.NewRequest(http.MethodGet, "/host/capabilities", nil)
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotImplemented {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"host_service_not_configured"`) {
+		t.Fatalf("response body = %s", rec.Body.String())
+	}
+}
+
 func TestServerRejectsUnknownRoute(t *testing.T) {
 	server := NewServer()
 	req := httptest.NewRequest(http.MethodGet, "/missing", nil)
@@ -65,4 +125,17 @@ func TestServerRejectsWrongPreflightMethod(t *testing.T) {
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
 	}
+}
+
+type fakeHostService struct {
+	caps host.Capabilities
+	vms  []host.VM
+}
+
+func (f fakeHostService) Capabilities(context.Context) (host.Capabilities, error) {
+	return f.caps, nil
+}
+
+func (f fakeHostService) ListVMs(context.Context) ([]host.VM, error) {
+	return f.vms, nil
 }

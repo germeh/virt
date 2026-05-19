@@ -40,6 +40,10 @@ func run(ctx context.Context, args []string, stdout io.Writer, stderr io.Writer,
 		return nil
 	case "health":
 		return runHealth(ctx, args[1:], stdout, client)
+	case "host-capabilities":
+		return runHostCapabilities(ctx, args[1:], stdout, client)
+	case "vm-list":
+		return runVMList(ctx, args[1:], stdout, client)
 	case "preflight":
 		return runPreflight(ctx, args[1:], stdout, client)
 	case "help", "-h", "--help":
@@ -70,6 +74,26 @@ func runHealth(ctx context.Context, args []string, stdout io.Writer, client *htt
 	return nil
 }
 
+func runHostCapabilities(ctx context.Context, args []string, stdout io.Writer, client *http.Client) error {
+	flags := flag.NewFlagSet("host-capabilities", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	server := flags.String("server", serverFromEnv(), "warm-migrationd server URL")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	return requestAndPrint(ctx, client, http.MethodGet, *server, "/host/capabilities", nil, stdout, "host capabilities")
+}
+
+func runVMList(ctx context.Context, args []string, stdout io.Writer, client *http.Client) error {
+	flags := flag.NewFlagSet("vm-list", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	server := flags.String("server", serverFromEnv(), "warm-migrationd server URL")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	return requestAndPrint(ctx, client, http.MethodGet, *server, "/host/vms", nil, stdout, "VM list")
+}
+
 func runPreflight(ctx context.Context, args []string, stdout io.Writer, client *http.Client) error {
 	flags := flag.NewFlagSet("preflight", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -83,13 +107,17 @@ func runPreflight(ctx context.Context, args []string, stdout io.Writer, client *
 	}
 
 	payload := fmt.Sprintf(`{"vm_id":%q}`, *vmID)
-	body, status, err := requestJSON(ctx, client, http.MethodPost, *server, "/migrations/preflight", []byte(payload))
+	return requestAndPrint(ctx, client, http.MethodPost, *server, "/migrations/preflight", []byte(payload), stdout, "preflight")
+}
+
+func requestAndPrint(ctx context.Context, client *http.Client, method string, server string, path string, payload []byte, stdout io.Writer, operation string) error {
+	body, status, err := requestJSON(ctx, client, method, server, path, payload)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintln(stdout, string(body))
 	if status < 200 || status > 299 {
-		return fmt.Errorf("preflight request failed with HTTP %d", status)
+		return fmt.Errorf("%s request failed with HTTP %d", operation, status)
 	}
 	return nil
 }
@@ -144,7 +172,9 @@ func serverFromEnv() string {
 }
 
 func printUsage(w io.Writer) {
-	fmt.Fprintln(w, "usage: virtctl <version|health|preflight>")
+	fmt.Fprintln(w, "usage: virtctl <version|health|host-capabilities|vm-list|preflight>")
 	fmt.Fprintln(w, "  virtctl health [--server http://127.0.0.1:8080]")
+	fmt.Fprintln(w, "  virtctl host-capabilities [--server http://127.0.0.1:8080]")
+	fmt.Fprintln(w, "  virtctl vm-list [--server http://127.0.0.1:8080]")
 	fmt.Fprintln(w, "  virtctl preflight --vm-id <vm-id> [--server http://127.0.0.1:8080]")
 }

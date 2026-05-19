@@ -5,7 +5,6 @@ This directory defines the first Debian-based appliance layer for Virt. It does 
 ## Base ISO
 
 - File: `debian-13.5.0-amd64-netinst.iso`
-- Local path: `C:\Users\вф\CODEX\OS\debian-13.5.0-amd64-netinst.iso`
 - Manifest path from this worktree: `../../OS/debian-13.5.0-amd64-netinst.iso`
 - SHA256: `95838884F5EA6C82421DFE6BAAA5A639DBBE6756C1E380F9FE7A7CB0C1949D2A`
 - Variant: Debian amd64 netinst
@@ -31,8 +30,10 @@ The intended first-node flow is:
 
 ```bash
 virtctl health
+virtctl host-capabilities
+virtctl vm-list
 ```
 
-## Current Limitation
+## ISO Builder
 
 Use `scripts/build-virt-node-iso.sh` to build `dist/virt-node.iso`. The builder copies these files into the Debian ISO and adds BIOS/UEFI boot entries for unattended installation.

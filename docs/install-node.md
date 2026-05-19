@@ -46,5 +46,7 @@ WARM_MIGRATION_LOG_LEVEL=info
 ```bash
 systemctl status warm-migrationd.service
 virtctl health
+virtctl host-capabilities
+virtctl vm-list
 curl http://127.0.0.1:8080/healthz
 ```

@@ -48,6 +48,50 @@ func TestRunHealthRequestsHealthEndpoint(t *testing.T) {
 	}
 }
 
+func TestRunHostCapabilitiesRequestsHostEndpoint(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/host/capabilities" {
+			t.Fatalf("path = %q", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true,"capabilities":{"ready":true}}`))
+	}))
+	defer server.Close()
+
+	var stdout bytes.Buffer
+	err := run(context.Background(), []string{"host-capabilities", "--server", server.URL}, &stdout, ioDiscard{}, server.Client())
+
+	if err != nil {
+		t.Fatalf("run() error = %v", err)
+	}
+	if !strings.Contains(stdout.String(), `"ready":true`) {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
+func TestRunVMListRequestsVMEndpoint(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/host/vms" {
+			t.Fatalf("path = %q", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true,"vms":[{"name":"web-01","state":"running"}]}`))
+	}))
+	defer server.Close()
+
+	var stdout bytes.Buffer
+	err := run(context.Background(), []string{"vm-list", "--server", server.URL}, &stdout, ioDiscard{}, server.Client())
+
+	if err != nil {
+		t.Fatalf("run() error = %v", err)
+	}
+	if !strings.Contains(stdout.String(), `"web-01"`) {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
 func TestRunPreflightRequiresVMID(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

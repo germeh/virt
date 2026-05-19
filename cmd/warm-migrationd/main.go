@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"warm-migration-core/internal/api"
+	"warm-migration-core/internal/host"
 	"warm-migration-core/internal/node"
 )
 
@@ -48,7 +49,7 @@ func run(args []string) error {
 
 	server := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           api.NewServer(),
+		Handler:           api.NewServer(api.WithHostService(host.NewLocalService())),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
