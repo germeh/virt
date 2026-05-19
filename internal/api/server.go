@@ -11,12 +11,24 @@ type Server struct {
 
 func NewServer() *Server {
 	s := &Server{mux: http.NewServeMux()}
+	s.mux.HandleFunc("/healthz", s.handleHealthz)
 	s.mux.HandleFunc("/migrations/preflight", s.handlePreflight)
 	return s
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
+}
+
+func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":      true,
+		"service": "warm-migrationd",
+	})
 }
 
 func (s *Server) handlePreflight(w http.ResponseWriter, r *http.Request) {
